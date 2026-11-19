@@ -1,8 +1,15 @@
 // @vitest-environment jsdom
-import { afterEach, describe, it, expect } from 'vitest';
+import { afterEach, describe, it, expect, vi } from 'vitest';
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import App from './App';
-import { FALLBACK_EXPLANATION } from './lib/explain';
+import { explainAvailability, FALLBACK_EXPLANATION } from './lib/explain';
+
+// Retain the real adapter for normal UI tests, but allow a genuine rejection
+// in the failure test to cover App's catch/fallback handling.
+vi.mock('./lib/explain', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('./lib/explain')>();
+  return { ...actual, explainAvailability: vi.fn(actual.explainAvailability) };
+});
 
 afterEach(() => {
   cleanup();
@@ -141,16 +148,22 @@ describe('Explain availability (mock adapter UI)', () => {
     expect(screen.queryByText(/free from 10:30/)).toBeNull();
   });
 
-  it('falls back to a safe message when the adapter fails', () => {
+  it('shows the safe fallback when the adapter rejects without changing confirmed status', async () => {
+    vi.mocked(explainAvailability).mockRejectedValueOnce(new Error('Simulated adapter failure'));
     render(<App />);
 
     fireEvent.click(roomButton(/Computer Lab D/)!);
     setRequestTimes('10:30', '11:00');
+    expect(screen.getByText('Unavailable')).not.toBeNull();
+    expect(screen.getByText('Room is currently blocked.')).not.toBeNull();
+
     fireEvent.click(screen.getByRole('button', { name: 'Explain availability' }));
 
-    // The blocked-room path uses the normal mock mode; this asserts the
-    // failure fallback text can be rendered when produced by the adapter.
-    expect(FALLBACK_EXPLANATION.length).toBeGreaterThan(0);
-    expect(screen.getByText(/blocked/)).not.toBeNull();
+    await waitFor(() => {
+      expect(screen.getByText(FALLBACK_EXPLANATION)).not.toBeNull();
+    });
+    expect(screen.getByText('Mock explanation (not an AI API response)')).not.toBeNull();
+    expect(screen.getByText('Unavailable')).not.toBeNull();
+    expect(screen.getByText('Room is currently blocked.')).not.toBeNull();
   });
 });
