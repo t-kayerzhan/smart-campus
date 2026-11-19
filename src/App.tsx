@@ -1,7 +1,8 @@
-import { useEffect, useMemo, useState } from 'react';
-import { Clock, DoorClosed, CheckCircle2, XCircle } from 'lucide-react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { Clock, DoorClosed, CheckCircle2, XCircle, Sparkles } from 'lucide-react';
 import { hhmmToMinutes } from '@/lib/time';
 import { checkAvailability, MAX_DURATION_MIN } from '@/lib/booking';
+import { deriveReasonCode, explainAvailability, FALLBACK_EXPLANATION } from '@/lib/explain';
 import { ROOMS } from '@/lib/rooms';
 import {
   filterRooms,
@@ -20,6 +21,10 @@ function App() {
   const [attendeesInput, setAttendeesInput] = useState('2');
   const [requiredEquipment, setRequiredEquipment] = useState<string[]>([]);
   const [selectedRoomId, setSelectedRoomId] = useState<string | null>(null);
+  const [explanation, setExplanation] = useState<string | null>(null);
+  const [explanationPending, setExplanationPending] = useState(false);
+  const [explanationFailed, setExplanationFailed] = useState(false);
+  const requestIdRef = useRef(0);
 
   const startMin = hhmmToMinutes(startTime);
   const endMin = hhmmToMinutes(endTime);
@@ -46,6 +51,42 @@ function App() {
   );
 
   const duration = endMin - startMin;
+
+  // Clearing effect: any change to the request context drops the previous
+  // explanation so a stale one can never be shown.
+  useEffect(() => {
+    requestIdRef.current += 1;
+    setExplanation(null);
+    setExplanationFailed(false);
+    setExplanationPending(false);
+  }, [selectedRoomId, startMin, endMin, currentTime, attendeesInput, requiredEquipment]);
+
+  const handleExplain = () => {
+    if (!selectedRoom || !result) return;
+    const requestId = ++requestIdRef.current;
+    setExplanationPending(true);
+    setExplanationFailed(false);
+    explainAvailability({
+      roomLabel: selectedRoom.name,
+      startTime,
+      endTime,
+      isAvailable: result.status === 'available',
+      reasonCode: deriveReasonCode(result),
+    })
+      .then((res) => {
+        if (requestIdRef.current !== requestId) return;
+        setExplanation(res.explanation);
+        setExplanationFailed(res.explanation === FALLBACK_EXPLANATION);
+      })
+      .catch(() => {
+        if (requestIdRef.current !== requestId) return;
+        setExplanation(FALLBACK_EXPLANATION);
+        setExplanationFailed(true);
+      })
+      .finally(() => {
+        if (requestIdRef.current === requestId) setExplanationPending(false);
+      });
+  };
 
   const toggleEquipment = (item: string) =>
     setRequiredEquipment((prev) =>
@@ -177,6 +218,36 @@ function App() {
                       </p>
                     )}
                   </div>
+                </div>
+              )}
+
+              {/* Mock LLM explanation (optional) */}
+              {result && (
+                <div className="rounded-xl p-4 border border-slate-200 bg-slate-50">
+                  <button
+                    type="button"
+                    onClick={handleExplain}
+                    disabled={explanationPending}
+                    aria-busy={explanationPending}
+                    className="inline-flex items-center gap-2 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-100 disabled:opacity-50"
+                  >
+                    <Sparkles className="w-4 h-4 text-slate-500" />
+                    {explanationPending ? 'Preparing explanation…' : 'Explain availability'}
+                  </button>
+                  {explanation && (
+                    <div className="mt-3">
+                      <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">
+                        Mock explanation (not an AI API response)
+                      </p>
+                      <p
+                        className={`mt-1 text-sm ${
+                          explanationFailed ? 'text-slate-600' : 'text-slate-700'
+                        }`}
+                      >
+                        {explanation}
+                      </p>
+                    </div>
+                  )}
                 </div>
               )}
             </>
