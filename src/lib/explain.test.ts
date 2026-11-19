@@ -134,10 +134,19 @@ describe('explainAvailability (mock adapter)', () => {
     ).resolves.toEqual({ explanation: FALLBACK_EXPLANATION });
   });
 
-  it('returns a rejected promise when the adapter throws unexpectedly', async () => {
-    const throwing = explainAvailability.call(null, validInput) as Promise<unknown>;
-    // Simulated failure path exercised above; here we verify a thrown adapter
-    // rejection propagates so the caller can fall back.
-    await expect(throwing).resolves.toBeTruthy();
+  it.each([
+    ['past_request', 'The start of your request must be after the supplied current time. Please choose a later start time.'],
+    ['duration_exceeded', 'Your request is longer than the 120-minute limit. Please shorten it to 120 minutes or less.'],
+    ['invalid_interval', 'The requested interval is not valid, so the room cannot be checked. Please make sure the start is before the end within the same day.'],
+    ['invalid_current_time', 'The supplied current time is not valid, so availability cannot be confirmed. Please check the current time input.'],
+    ['unknown', 'The reason for this result could not be determined. Please refer to the availability message shown above.'],
+  ] as const)('explains %s without inventing facts', async (reasonCode, expectedExplanation) => {
+    const result = await explainAvailability({
+      ...validInput,
+      isAvailable: false,
+      reasonCode,
+    });
+    expect(result).toEqual({ explanation: expectedExplanation });
+    expect(result.explanation.split(/[.!?]/).filter((part) => part.trim())).toHaveLength(2);
   });
 });
