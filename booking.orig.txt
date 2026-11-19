@@ -1,0 +1,42 @@
+export type ExistingBooking = { start: number; end: number; label: string };
+
+export type Result =
+  | { status: 'available' }
+  | { status: 'unavailable'; reason: string };
+
+export function checkAvailability(
+  startMin: number,
+  endMin: number,
+  currentTime: number,
+  roomBlocked: boolean,
+  bookings: ExistingBooking[]
+): Result {
+  if (roomBlocked) {
+    return { status: 'unavailable', reason: 'Room is currently blocked.' };
+  }
+  if (!(0 <= startMin && startMin < endMin && endMin <= 1440)) {
+    return {
+      status: 'unavailable',
+      reason: 'Interval must satisfy 0 ≤ start < end ≤ 1440 minutes.',
+    };
+  }
+  if (startMin <= currentTime) {
+    return {
+      status: 'unavailable',
+      reason: 'Start time must be strictly after the supplied current time.',
+    };
+  }
+  if (endMin - startMin > 120) {
+    return { status: 'unavailable', reason: 'Duration cannot exceed 120 minutes.' };
+  }
+  for (const b of bookings) {
+    const overlaps = startMin < b.end && b.start < endMin;
+    if (overlaps) {
+      return {
+        status: 'unavailable',
+        reason: `Overlaps existing booking ${b.label}.`,
+      };
+    }
+  }
+  return { status: 'available' };
+}
