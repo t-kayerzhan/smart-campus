@@ -4,17 +4,22 @@ Smart Campus room availability checker with four fictional rooms, attendee/equip
 
 # Project Structure
 
-- src/lib/booking.ts: pure availability validation logic (MAX_DURATION_MIN constant, NaN/Infinity guards).
+- src/lib/booking.ts: pure availability validation logic (MAX_DURATION_MIN constant, NaN/Infinity guards). The ONLY source of truth for Available/Unavailable.
 - src/lib/time.ts: time conversion helpers (HH:MM to minutes).
 - src/lib/rooms.ts: fictional four-room catalog with bookings.
 - src/lib/roomFilters.ts: attendee parsing, capacity/equipment filtering, equipment options, selection fallback.
+- src/lib/explain.ts: mock explanation adapter (deriveReasonCode, explainAvailability). Mock only — never calls a real AI/LLM API. booking.ts remains authoritative.
 - src/lib/booking.test.ts: 26 Vitest tests for booking rules (AC1–AC5, non-finite times).
 - src/lib/roomFilters.test.ts: 19 tests for capacity/equipment filtering, input validation, immutability.
 - src/lib/roomSelection.test.ts: 13 tests for attendee parsing, equipment options, selection fallback.
 - src/lib/rooms.test.ts: 7 tests for the room catalog.
+- src/lib/explain.test.ts: 19 tests for the mock adapter (explanation text, input validation, fallback, hostile-label handling).
+- src/lib/explain.contract.test.ts: 7 contract tests verifying deriveReasonCode maps each actual checkAvailability result to the correct reason code.
 - src/components/RoomSelector.tsx: attendee input, equipment toggle buttons, matching room list.
 - src/App.tsx: application UI, state management, time inputs, result panel.
-- src/App.test.tsx: 6 rendered UI tests (jsdom) covering room listing, filtering, overlap, and blocked rooms.
+- src/App.test.tsx: 10 rendered UI tests (jsdom) covering room listing, filtering, overlap, blocked rooms, and the explain-availability feature.
+
+Total: 101 tests across 7 test files.
 
 # Constraints
 
@@ -26,6 +31,7 @@ Smart Campus room availability checker with four fictional rooms, attendee/equip
 - AC5: Do not mutate booking data.
 - AC6: Preserve clear responsive desktop/mobile feedback.
 - No backend, login, database, or booking creation.
+- The "Explain availability" feature is a mock adapter only. It must never call a real AI/LLM API. The deterministic result from booking.ts is always authoritative and must not be overridden.
 
 # Engineering Rules
 

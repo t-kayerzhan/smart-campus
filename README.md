@@ -17,6 +17,14 @@ Published app: https://t-kayerzhan-smart-ca-5dk7.bolt.host
 
 ## Implemented Features
 
+### Explain availability (mock adapter, `src/lib/explain.ts`)
+
+- An optional "Explain availability" button in the result panel produces a short, student-friendly explanation of the availability result.
+- This is a **mock adapter** — it does not call any real AI or LLM API. It is visibly labeled as a mock explanation in the UI.
+- The deterministic availability checker in `src/lib/booking.ts` remains the **only source of truth** for Available/Unavailable. The explanation never overrides or alters the booking result.
+- The adapter validates all inputs as untrusted data (empty labels, malformed times, overly long labels, control characters) and falls back to a safe deterministic message on invalid input, simulated timeout, or adapter failure.
+- `deriveReasonCode()` maps the booking checker's reason strings to structured reason codes. A contract test (`src/lib/explain.contract.test.ts`) verifies this mapping stays in sync with the actual booking logic.
+
 ### Booking rules (`src/lib/booking.ts`)
 
 - **AC1:** A request is rejected if its start is not before its end, if it is outside the 0 to 1440 minute range, or if its start is not strictly after the supplied current time.
@@ -91,14 +99,19 @@ All commands are defined in `package.json` and are run from the project root.
 
 ## Tests
 
-The test suite has two layers.
+The test suite has 101 tests across 7 test files, organized in three layers.
 
 **Logic tests** check the pure functions directly:
 
-- `src/lib/booking.test.ts`: 26 tests for the booking rules (T01 to T25, including AC1 to AC5 checks)
+- `src/lib/booking.test.ts`: 26 tests for the booking rules (AC1–AC5, non-finite times)
 - `src/lib/roomFilters.test.ts`: 19 tests for capacity and equipment filtering (F1 and F2), input validation, and immutability
 - `src/lib/roomSelection.test.ts`: 13 tests for attendee parsing, equipment options, and selection fallback
 - `src/lib/rooms.test.ts`: 7 tests for the room catalog
+
+**Mock adapter tests** check the explanation feature:
+
+- `src/lib/explain.test.ts`: 19 tests for the mock adapter (explanation text, input validation, fallback on timeout/failure, hostile-label handling)
+- `src/lib/explain.contract.test.ts`: 7 contract tests verifying that `deriveReasonCode()` maps each actual `checkAvailability()` result to the correct specific reason code (available, blocked, invalid_current_time, invalid_interval, past_request, duration_exceeded, overlap)
 
 **Rendered UI tests** (`src/App.test.tsx`) render the full `App` component in jsdom and use real user-style interactions (typing, clicking buttons, changing time inputs):
 
@@ -109,27 +122,30 @@ The test suite has two layers.
 5. Switching to Collaboration Room B with the same times changes the result to "Available".
 6. Selecting Computer Lab D shows "Unavailable" because the room is blocked.
 
-The most recent full run reported **71 passing tests** across 5 test files (65 logic tests and 6 UI tests). Run `npm test` to check the current result.
+The most recent full run reported **101 passing tests** across 7 test files (85 logic/adapter tests and 10 UI tests). Run `npm test` to check the current result.
 
 ## Project Structure
 
 ```
 src/
   App.tsx                    Main page: state, filters, time inputs, result panel
-  App.test.tsx               Rendered UI tests for App
+  App.test.tsx               Rendered UI tests for App (10 tests)
   main.tsx                   React entry point
   index.css                  Tailwind directives
   components/
     RoomSelector.tsx         Attendee input, equipment buttons, matching room list
   lib/
     booking.ts               Availability rules (pure function, MAX_DURATION_MIN)
-    booking.test.ts          Booking rule tests
+    booking.test.ts          Booking rule tests (26 tests)
     time.ts                  Time conversion helpers (HH:MM to minutes)
     rooms.ts                 Fictional room catalog and bookings
-    rooms.test.ts            Catalog tests
+    rooms.test.ts            Catalog tests (7 tests)
     roomFilters.ts           Attendee parsing, filtering, equipment list, selection fallback
-    roomFilters.test.ts      Filter tests
-    roomSelection.test.ts    Parsing and selection tests
+    roomFilters.test.ts      Filter tests (19 tests)
+    roomSelection.test.ts    Parsing and selection tests (13 tests)
+    explain.ts               Mock explanation adapter (deriveReasonCode, explainAvailability)
+    explain.test.ts          Mock adapter tests (19 tests)
+    explain.contract.test.ts Reason-code contract tests (7 tests)
 AGENTS.md                    Project constraints and engineering rules
 ```
 
@@ -138,4 +154,5 @@ AGENTS.md                    Project constraints and engineering rules
 - **Fictional local data:** Rooms and bookings are hard-coded in `src/lib/rooms.ts`. The app cannot add, edit, or create bookings.
 - **No persistent database:** Nothing is saved between page loads. There is no login and no backend in use.
 - **Fixed current time:** The "current time" is an input the user sets. The app does not use the real clock.
+- **Mock explanation only:** The "Explain availability" feature uses a mock adapter, not a real AI/LLM API. The deterministic result from `booking.ts` is always authoritative.
 - **Test limits:** The UI tests run in jsdom, a simulated browser environment. They do not check the real layout, styling, or behavior in a real browser. Desktop and mobile appearance must be checked by hand in a real browser.
