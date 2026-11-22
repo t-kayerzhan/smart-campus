@@ -55,6 +55,12 @@ Smart Campus room availability checker with four fictional rooms, attendee/equip
 - If a task exceeds the requested scope, stop and report instead of expanding it.
 - Every completed task must state: changed-file list, what changed and why, actual command results, and remaining limitations.
 
+# Human Approval Gate (Merge / Deploy)
+
+- Before any AI-generated work is accepted, merged, or deployed, a human must review and approve: the changed-file list, the diff, and the verification evidence (test, build, lint, typecheck results).
+- An AI agent must never merge, push, publish, or deploy without explicit human authorization. When a task reaches a merge, push, publish, or deploy boundary, the agent must stop and report, then wait for human approval before proceeding.
+- This gate supplements the existing prohibitions on production actions, secrets, destructive commands, and unauthorized dependency changes. It does not replace or weaken them.
+
 # Current Refactoring Goals
 
 - Centralize the maximum booking duration constant.
