@@ -1,6 +1,6 @@
 # Project
 
-Smart Campus room availability checker with four fictional rooms, attendee/equipment filtering, and a fixed current time.
+Smart Campus room availability checker with four fictional rooms, attendee/equipment filtering, a fixed current time, and an optional mock "Explain availability" feature (deterministic availability in booking.ts is always authoritative).
 
 # Project Structure
 
@@ -39,11 +39,21 @@ Smart Campus room availability checker with four fictional rooms, attendee/equip
 
 # Verification
 
+- Setup: run `npm install` first (never install new dependencies without approval).
 - Run npm test for Vitest regression tests.
 - Run npm run build.
-- Use lint and typecheck commands if available.
+- Use lint and typecheck commands if available (`npm run lint`, `npm run typecheck`).
 - Check desktop and mobile UI behavior.
 - Report changed files, rationale, actual test output, and remaining limitations.
+
+# AI Agent Rules
+
+- Allowed scope: application source under src/, its tests, and docs (AGENTS.md, README.md). Do not touch anything else.
+- Forbidden: committing secrets or API keys, real personal data, production deployment or publishing, destructive commands (rm -rf, force overwrites), and any database, backend, or real LLM API work — all explicitly out of scope.
+- Dependency changes and file deletions require explicit human approval first.
+- If any test, build, lint, or typecheck run fails, stop and report the actual output; do not weaken tests or mask failures.
+- If a task exceeds the requested scope, stop and report instead of expanding it.
+- Every completed task must state: changed-file list, what changed and why, actual command results, and remaining limitations.
 
 # Current Refactoring Goals
 
